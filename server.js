@@ -18,7 +18,12 @@ app.post('/meeting', multer({ dest: 'uploads/' }).single('image'), async (req, r
 
         // Mengecek apakah ekstensi file adalah .webp atau .svg
         if (extension === '.webp' || extension === '.svg') {
-            return res.status(400).send('File format .webp and .svg are not allowed');
+            return res.status(400).json({
+                code: 400,
+                message: 'Bad Request',
+                status: 'Error',
+                data: 'File format .webp and .svg are not allowed'
+            });
         }
 
         const result = await cloudinary.uploader.upload(req.file.path);
@@ -34,12 +39,44 @@ app.post('/meeting', multer({ dest: 'uploads/' }).single('image'), async (req, r
         };
 
         db.query(sql, values, (err, result) => {
-            if (err) throw err;
-            res.send(result);
+            if (err) {
+                console.log(err);
+                return res.status(500).json({
+                    code: 500,
+                    message: 'Internal Server Error',
+                    status: 'Error',
+                    data: err
+                });
+            }
+
+            // Mengambil data yang baru saja dimasukkan
+            db.query('SELECT * FROM meetings WHERE id = ?', result.insertId, (err, rows) => {
+                if (err) {
+                    console.log(err);
+                    return res.status(500).json({
+                        code: 500,
+                        message: 'Internal Server Error',
+                        status: 'Error',
+                        data: err
+                    });
+                }
+
+                res.status(200).json({
+                    code: 200,
+                    message: 'OK',
+                    status: 'Success',
+                    data: rows[0] // Mengirim data yang baru saja dimasukkan
+                });
+            });
         });
     } catch (err) {
         console.log(err);
-        res.status(500).send(err);
+        res.status(500).json({
+            code: 500,
+            message: 'Internal Server Error',
+            status: 'Error',
+            data: err
+        });
     }
 });
 
@@ -47,8 +84,22 @@ app.get('/meetings', (req, res) => {
     const sql = 'SELECT * FROM meetings';
 
     db.query(sql, (err, results) => {
-        if (err) throw err;
-        res.send(results);
+        if (err) {
+            console.log(err);
+            return res.status(500).json({
+                code: 500,
+                message: 'Internal Server Error',
+                status: 'Error',
+                data: err
+            });
+        }
+
+        res.status(200).json({
+            code: 200,
+            message: 'OK',
+            status: 'Success',
+            data: results
+        });
     });
 });
 
